@@ -1,0 +1,196 @@
+Gesucht: 
+Minimales Programm zum testen des Programmers bzw. Debuggers auf dem gegebenen Board mit reinen Maschinenbefehlen umgesetzt um mögliche Fehlerquellen zu umgehen. Um bei eineren späteren Umstellung auf eine IDE mit Compiler mit mit den architekturspezifischen Eigenheiten und Problemen gezielt umgehen zu können bzw. sie schnell mit Reverse-Engineering Methoden wie z.B. gezieltes Debugging oder Tracing zu analyisieren und dabei die typische Fehlerzustände zu kennen.
+
+Gegeben:
+STM32F103RBT6
+
+UC:
+==
+    ARM® 32-bit Cortex® -M3 CPU Core
+        72 MHz maximum frequency,1.25 DMIPS/MHz (Dhrystone 2.1) performance at 0 wait state memory access
+        Single-cycle multiplication and hardware division
+    Memories
+        128 Kbytes of Flash memory
+        20 Kbytes of SRAM
+    Clock, reset and supply management
+        2.0 to 3.6 V application supply and I/Os
+        POR, PDR, and programmable voltage detector (PVD)
+        4-to-16 MHz crystal oscillator
+        Internal 8 MHz factory-trimmed RC
+        Internal 40 kHz RC
+        PLL for CPU clock
+        32 kHz oscillator for RTC with calibration
+    Low-power
+        Sleep, Stop and Standby modes
+        VBAT supply for RTC and backup registers
+    2 x 12-bit, 1 μs A/D converters (up to 16 channels)
+        Conversion range: 0 to 3.6 V
+        Dual-sample and hold capability
+        Temperature sensor
+    DMA
+        7-channel DMA controller
+        Peripherals supported: timers, ADC, SPIs, I2 Cs and USARTs
+    Up to 80 fast I/O ports
+        26/37/51/80 I/Os, all mappable on 16 external interrupt vectors and almost all 5 V-tolerant
+    Debug mode
+        Serial wire debug (SWD) & JTAG interfaces
+    7 timers
+        Three 16-bit timers, each with up to 4 IC/OC/PWM or pulse counter and quadrature (incremental) encoder input
+        16-bit, motor control PWM timer with dead-time generation and emergency stop
+        2 watchdog timers (Independent and Window)
+        SysTick timer 24-bit downcounter
+    Up to 9 communication interfaces
+        Up to 2 x I2 C interfaces (SMBus/PMBus)
+        Up to 3 USARTs (ISO 7816 interface, LIN, IrDA capability, modem control)
+        Up to 2 SPIs (18 Mbit/s)
+        CAN interface (2.0B Active)
+        USB 2.0 full-speed interface
+    CRC calculation unit, 96-bit unique ID
+    Packages are ECOPACK®
+
+
+Pins: 
+Boot 0 (nc)
+
+D13(SCK1/LED1) → PA5 : This jumper, when is closed, enables LED1. Default enabled
+LED2 (D3) → PA0 : This jumper, when is closed, enables LED2. Default state is closed.
+Quartz crystal  Q1 8 MHz is connected to STM32F103RBT6 pin 5 (PD0/OSC_IN) and pin 6 
+(PD1/OSC_OUT).
+Quartz crystal  Q2 32.768 kHz is connected to STM32F103RBT6 pin 3 (PC14/OSC32_IN) and pin 4 (PC15/OSC32_OUT). 
+R-T: This jumper, when is closed, connects TRST and RESET, and when is opened, TRST and RESET are separated. 
+Default state is opened.
+D23-E: This jumper, when is closed, connects STM32F103RBT6 pin (PC15/OSC32_OUT) – 
+signal D23 to EXT pin 1, and when is opened, D23 is not connected to EXT.
+Default state is opened.
+
+Status Led with name LED1 (green) connected via jumper LED1_E to STM32F103RBT6
+pin 21 (PA5/SPI1_SCK/ADC5) – signal D13(SCK/LED1).
+Status Led with name LED2 (yellow) connected to STM32F103RBT6 pin 15
+(PA1/USART2_RTS/ADC1/TIM2_CH2) – signal D3(LED2).
+Power-on LED (red) with name PWR_LED – this LED shows that the board is power
+supplied.
+User button with name BUT connected to STM32F103RBT6 pin 40 (PC9/TIM3_CH4) via
+R33 (1kΩ) and pin 60 (BOOT0) – signal BOOT0.
+User button with name RST connected to STM32F103RBT6 pin 7 (NRST).
+
+OpenOCD:
+========
+openocd -f interface/ftdi/olimex-arm-usb-ocd.cfg -f interface/ftdi/olimex-arm-jtag-swd.cfg -f target/stm32f1x.cfg -c "init" -c "program HEXFILE verify reset"
+
+Cortex M3 Arch Family details:
+The processor uses a full descending stack. Th
+is means the stack pointer indicates the last 
+stacked item on the stack memory. 
+
+Stackpointer = R13
+Link Register = R14
+if R13[1] == 0 then
+  MSP is used
+else 
+  PSP (Process Stack Pointer) is used
+
+
+0x20000000-0x200FFFFF  SRAM bit-band region Direct accesses to this memory range behave as SRAM memory 
+0x20000000- 0x200FFFFF SRAM bit-band region accesses, but this region is also bit addressable through bit-band alias 
+0x22000000-0x23FFFFFF SRAM bit-band alias 0x40000000-0x400FFFFF Peripheral bit-band region Direct accesses to this memory range behave as peripheral memory accesses, but this region is also bit addressable through bit-band alias.
+0x42000000-0x43FFFFFF Peripheral  bit-band alias Data accesses to this region are remapped to bit-band region. A write operation is performed as read-modi fy-write. Instruction accesses are not permitted.
+
+bit_word_offset = (byte_offset x 32) + (bit_number x 4)
+bit_word_addr = bit_band_base + bit_word_offset
+
+STM32F103RBT6 implementation Details:
+128 KB Flash
+20 KB SRAM ohne CPU-Wartekram
+1 General Timer
+3 Advanced Timer
+2x SPI SP1, SPI2
+2x I2C I2C1, I2C2
+1x USB2.0 FS Device (auch Host?)
+1x CAN bxCAN
+51x GPIO
+2x 12-bit ADC Einheiten mit 16 Kanälen (davon 15 praktisch verfügbar)
+72 MHz
+Spannungstoleranz 2 bis 3.6 V
+LQFP64
+
+Trace Controller implentiert
+GP DMA 7 Kanälen (ROM, SPI, I2C, USART, GPI, TIM1, ADC)
+Pn = P{A,..,E} = GPIOn [0..15]
+Temp sensor (bei ADC)
+
+Boot         modes
+At startup, boot pins are used to select one of three boot options:
+• Boot from User Flash
+• Boot from System Memory
+• Boot from embedded SRAM
+The boot loader is located in System Memory. 
+It is used to reprogram the Flash memory by using USART1. For further details please refer to AN2606.
+Stop Mode can stop the crystal oscillator, Sleep mode only when enabled and no interrupt occur, Standby SRAM and registers lost except in the backup domain and Standby circuitry
+RTC default: 1 Sekunde über 32.768 kHz mit 20 bit prescalers bei 128er Teilung (intern nur 40 kHz). Kalibrierung über 512 Hz Output.
+
+Entweder SWJ-DP oder JTAG - SWDIO und SWCLK wird mit TMS und TCK pins geteilt. Sequence um TMS pin umzuschalten ist notwendig (siehe OpenOCD TCL-Scripts).
+The Flash access time is adjusted to f HCLK frequency (0 wait state from 0 to 24 MHz, 1 wait state from 24 to 48 MHz and 2 wait states above).
+Crystal osc average startup time 2ms
+bis zu 60 Sekunden (im absoluten Worst-Case RTC Startup Time)
+
+EMI Probleme ermitteln: Mittels einfachem Task der 2 LEDs toggled.
+
+Software recommendations
+The software flowchart must include the management of runaway conditions such as:
+• Corrupted program counter
+•Unexpected reset
+•Critical Data corruption (control registers...) (z.B. über CRC-Peripherie?)
+
+Prequalification trialsMost of the common failures (unexpected reset and program counter corruption) can be 
+reproduced by manually forcing a low state on the NRST pin or the Oscillator pins for 1 
+second.To complete these trials, ESD stress can be applied directly on the device, over the range of 
+specification values. When unexpected behavior is detected, the software can be hardened 
+to prevent unrecoverable errors occurring (see application note AN1015).
+
+Nested vectored interrupt controller (NVIC)
+The STM32F103xx performance line embeds a ne
+sted vectored interrupt controller able to 
+handle up to 43 maskable interrupt channels (not including the 16 interrupt lines of Cortex
+
+M3) and 16 priority levels.
+Closely coupled NVIC gives low-latency interrupt processing
+Interrupt entry vector table address passed directly to the cores
+Closely coupled NVIC core interface
+Allows early processing of interrupts
+Processing of 
+late arriving
+ higher priority interrupts
+Support for tail-chaining
+•
+Processor state automatically saved
+•
+Interrupt entry restored on interrupt exit with no instruction overhead
+
+
+Independent watchdog
+The independent watchdog is based on a 12-bit downcounter and 8-bit prescaler. It is 
+clocked from an independent 40 kHz internal RC
+ and as it operates independently of the 
+main clock, it can operate in Stop and Stan
+dby modes. It can be used either as a watchdog 
+to reset the device when a problem occurs, or as a free-running timer for application timeout 
+management. It is hardware- or software-configurable through the option bytes. The counter 
+can be frozen in debug mode.
+
+Achtung: Beim Debuggen und bei einigen Tests vorsichtshalber alles umgehen was irgendwie mit Watchdog-Abhängigkeiten zu tun hat!
+
+Program memory, data memory, registers and I/O ports are organized within the same linear
+4-Gbyte address space.
+The bytes are coded in memory in Little Endian format. The lowest numbered byte in a word
+is considered the word’s least significant byte and the highest numbered byte the most
+significant.
+For the detailed mapping of peripheral registers, please refer to the related chapters.
+The addressable memory space is divided into 8 main blocks, each of 512 MB.
+All the memory areas that are not allocated to on-chip memories and peripherals are
+considered “Reserved”). Refer to the Memory map figure in the corresponding product
+datasheet.
+
+x 0 Main Flash memory Main Flash memory is selected as boot space
+0 1 System memory System memory is selected as boot space
+1 1 Embedded SRAM Embedded SRAM is selected as boot space
+
